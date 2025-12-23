@@ -4,59 +4,143 @@
   <meta charset="UTF-8" />
   <title>Device Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
     body { margin:0; font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; background:#0f172a; color:#e5e7eb; }
-    header { padding:16px; background:#020617; font-size:20px; font-weight:600; display:flex; gap:10px; align-items:center; }
+    header { padding:16px; background:#020617; font-size:20px; font-weight:600; }
     main { padding:24px; display:grid; gap:16px; max-width:900px; margin:0 auto; }
     .card { background:#020617; border-radius:12px; padding:20px; border:1px solid #1e293b; }
     button { background:#2563eb; color:white; border:none; padding:12px 16px; border-radius:8px; font-size:16px; width:100%; }
-    textarea { width:100%; min-height:60px; border-radius:10px; border:1px solid #1e293b; background:#0b1220; color:#e5e7eb; padding:12px; font-size:16px; box-sizing:border-box; }
+    input, textarea { width:100%; border-radius:10px; border:1px solid #1e293b; background:#0b1220; color:#e5e7eb; padding:12px; font-size:16px; box-sizing:border-box; }
     pre { background:#0b1220; border:1px solid #1e293b; border-radius:10px; padding:12px; overflow:auto; max-height:320px; }
     .hint { color:#94a3b8; font-size:14px; }
+    .row { display:flex; gap:10px; align-items:center; }
+    .row button { width:auto; }
   </style>
 </head>
 <body>
   <header>📱 Device Dashboard</header>
 
   <main>
-    <div class="card">
-      <h2>Status</h2>
-      <p>Dashboard is online.</p>
-      <p class="hint">Tip: try /health in the URL for backend status.</p>
+    <div class="card" id="boot">
+      <h2>Starting…</h2>
+      <p class="hint">Loading Supabase config from server.</p>
+      <pre id="bootOut">(waiting)</pre>
     </div>
 
-    <div class="card">
-      <h2>AI Maintenance</h2>
-      <p class="hint">Type a command: <b>help</b>, <b>status</b>, <b>diagnose</b>, <b>uptime</b>, <b>env</b>, <b>logs</b></p>
-
-      <textarea id="cmd" placeholder="Type command here (example: diagnose)"></textarea>
+    <div class="card" id="loginBox" style="display:none">
+      <h2>Login</h2>
+      <p class="hint">If the account doesn’t exist yet, we’ll create it.</p>
+      <input id="email" placeholder="Email" />
+      <div style="height:10px"></div>
+      <input id="password" type="password" placeholder="Password" />
       <div style="height:12px"></div>
-      <button onclick="runMaintenance()">Perform Maintenance</button>
+      <button onclick="login()">Login / Create Account</button>
+      <div style="height:10px"></div>
+      <pre id="loginStatus">(waiting)</pre>
+    </div>
 
-      <div style="height:16px"></div>
-      <h3>Result</h3>
-      <pre id="out">(waiting)</pre>
+    <div id="dashboard" style="display:none">
+      <div class="card">
+        <div class="row">
+          <div>
+            <h2>Status</h2>
+            <p class="hint" id="whoami"></p>
+          </div>
+          <button onclick="logout()">Logout</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>AI Maintenance</h2>
+        <p class="hint">Commands: help, status, diagnose, uptime, env, logs</p>
+        <textarea id="cmd" placeholder="Type a command (example: diagnose)"></textarea>
+        <div style="height:12px"></div>
+        <button onclick="runMaintenance()">Run</button>
+        <div style="height:12px"></div>
+        <pre id="out">(waiting)</pre>
+      </div>
     </div>
   </main>
 
   <script>
+    let sb = null;
+
+    async function boot() {
+      const bootOut = document.getElementById("bootOut");
+      try {
+        const res = await fetch("/config");
+        const cfg = await res.json();
+        if (!res.ok) throw new Error(JSON.stringify(cfg));
+
+        sb = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+
+        document.getElementById("boot").style.display = "none";
+        document.getElementById("loginBox").style.display = "block";
+        bootOut.textContent = "OK";
+      } catch (e) {
+        bootOut.textContent = "Boot error:\n" + e.message;
+      }
+    }
+
+    async function login() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const box = document.getElementById("loginStatus");
+      box.textContent = "Working…";
+
+      // Try sign-in first
+      let { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+      // If sign-in fails, create the account
+      if (error) {
+        const signup = await sb.auth.signUp({ email, password });
+        if (signup.error) {
+          box.textContent = "Error: " + signup.error.message;
+          return;
+        }
+        box.textContent = "Account created. Tap Login again.";
+        return;
+      }
+
+      box.textContent = "Logged in.";
+      document.getElementById("whoami").textContent = "Signed in as: " + data.user.email;
+      document.getElementById("loginBox").style.display = "none";
+      document.getElementById("dashboard").style.display = "block";
+    }
+
+    async function logout() {
+      await sb.auth.signOut();
+      document.getElementById("dashboard").style.display = "none";
+      document.getElementById("loginBox").style.display = "block";
+      document.getElementById("out").textContent = "(waiting)";
+    }
+
     async function runMaintenance() {
-      const cmd = document.getElementById("cmd").value.trim() || "help";
       const out = document.getElementById("out");
       out.textContent = "Running…";
 
-      try {
-        const res = await fetch("/maintenance", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ command: cmd })
-        });
-        const data = await res.json();
-        out.textContent = JSON.stringify(data, null, 2);
-      } catch (e) {
-        out.textContent = "Error: " + e.message;
+      const cmd = document.getElementById("cmd").value.trim() || "help";
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session?.access_token) {
+        out.textContent = "Not logged in.";
+        return;
       }
+
+      const res = await fetch("/maintenance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + session.access_token
+        },
+        body: JSON.stringify({ command: cmd })
+      });
+
+      const json = await res.json();
+      out.textContent = JSON.stringify(json, null, 2);
     }
+
+    boot();
   </script>
 </body>
 </html>
