@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+    }
+
+    header {
+      padding: 16px;
+      background: #020617;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    main {
+      padding: 24px;
+    }
+
+    .card {
+      background: #020617;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      border: 1px solid #1e293b;
+    }
+
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body>
+  <header>📱 Device Dashboard</header>
+
+  <main>
+    <div class="card">
+      <h2>Status</h2>
+      <p>Dashboard is online.</p>
+    </div>
+
+    <div class="card">
+      <h2>AI Maintenance</h2>
+      <p>This is where AI-driven maintenance will live.</p>
+      <button onclick="runMaintenance()">Perform Maintenance</button>
+    </div>
+  </main>
+
+  <script>
+    function runMaintenance() {
+      fetch("/maintenance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "run" })
+      })
+        .then(res => res.json())
+        .then(data => {
+          alert("Maintenance response:\\n" + JSON.stringify(data, null, 2));
+        });
+    }
+  </script>
+</body>
+</html>
