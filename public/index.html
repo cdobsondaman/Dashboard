@@ -2,47 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Dashboard</title>
+  <title>Device Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
-    }
-
-    header {
-      padding: 16px;
-      background: #020617;
-      font-size: 20px;
-      font-weight: 600;
-    }
-
-    main {
-      padding: 24px;
-    }
-
-    .card {
-      background: #020617;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
-      border: 1px solid #1e293b;
-    }
-
-    button {
-      background: #2563eb;
-      color: white;
-      border: none;
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 16px;
-    }
-
-    button:active {
-      transform: scale(0.98);
-    }
+    body { margin:0; font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; background:#0f172a; color:#e5e7eb; }
+    header { padding:16px; background:#020617; font-size:20px; font-weight:600; display:flex; gap:10px; align-items:center; }
+    main { padding:24px; display:grid; gap:16px; max-width:900px; margin:0 auto; }
+    .card { background:#020617; border-radius:12px; padding:20px; border:1px solid #1e293b; }
+    button { background:#2563eb; color:white; border:none; padding:12px 16px; border-radius:8px; font-size:16px; width:100%; }
+    textarea { width:100%; min-height:60px; border-radius:10px; border:1px solid #1e293b; background:#0b1220; color:#e5e7eb; padding:12px; font-size:16px; box-sizing:border-box; }
+    pre { background:#0b1220; border:1px solid #1e293b; border-radius:10px; padding:12px; overflow:auto; max-height:320px; }
+    .hint { color:#94a3b8; font-size:14px; }
   </style>
 </head>
 <body>
@@ -52,26 +22,40 @@
     <div class="card">
       <h2>Status</h2>
       <p>Dashboard is online.</p>
+      <p class="hint">Tip: try /health in the URL for backend status.</p>
     </div>
 
     <div class="card">
       <h2>AI Maintenance</h2>
-      <p>This is where AI-driven maintenance will live.</p>
+      <p class="hint">Type a command: <b>help</b>, <b>status</b>, <b>diagnose</b>, <b>uptime</b>, <b>env</b>, <b>logs</b></p>
+
+      <textarea id="cmd" placeholder="Type command here (example: diagnose)"></textarea>
+      <div style="height:12px"></div>
       <button onclick="runMaintenance()">Perform Maintenance</button>
+
+      <div style="height:16px"></div>
+      <h3>Result</h3>
+      <pre id="out">(waiting)</pre>
     </div>
   </main>
 
   <script>
-    function runMaintenance() {
-      fetch("/maintenance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "run" })
-      })
-        .then(res => res.json())
-        .then(data => {
-          alert("Maintenance response:\\n" + JSON.stringify(data, null, 2));
+    async function runMaintenance() {
+      const cmd = document.getElementById("cmd").value.trim() || "help";
+      const out = document.getElementById("out");
+      out.textContent = "Running…";
+
+      try {
+        const res = await fetch("/maintenance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ command: cmd })
         });
+        const data = await res.json();
+        out.textContent = JSON.stringify(data, null, 2);
+      } catch (e) {
+        out.textContent = "Error: " + e.message;
+      }
     }
   </script>
 </body>
