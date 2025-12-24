@@ -176,5 +176,40 @@ app.post("/maintenance", requireAuth, (req, res) => {
   addLog({ time: now, by: req.user.email, command });
   res.json({ ok: true, time: now, command, result });
 });
+import { createClient } from "@supabase/supabase-js";
 
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
+
+app.post("/api/enroll/create", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ error: "Missing auth" });
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  const { data: userData, error: userError } =
+    await supabase.auth.getUser(token);
+
+  if (userError || !userData.user) {
+    return res.status(401).json({ error: "Invalid user" });
+  }
+
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+  const { error } = await supabase
+    .from("enrollment_codes")
+    .insert({
+      owner_id: userData.user.id,
+      code
+    });
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json({ enrollment_code: code });
+});
 app.listen(PORT, () => console.log(`Dashboard running on port ${PORT}`));
