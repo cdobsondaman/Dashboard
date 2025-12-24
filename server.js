@@ -55,28 +55,6 @@ app.post("/enroll/create", async (req, res) => {
   });
 });
 
-/* ---------- START SERVER ---------- */
-// TEMP: browser-friendly enrollment code generator
-app.get("/enroll/create-test", async (req, res) => {
-  if (!supabaseAnon) {
-    return res.status(500).json({ ok: false, error: "Supabase not configured" });
-  }
-
-  const code = crypto.randomBytes(4).toString("hex").toUpperCase();
-
-  const { error } = await supabaseAnon
-    .from("enrollment_codes")
-    .insert({ code });
-
-  if (error) {
-    return res.status(400).json({ ok: false, error: error.message });
-  }
-
-  res.json({
-    ok: true,
-    enrollment_code: code
-  });
-});
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
