@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enroll Device</title>
+  <style>
+    body { font-family: system-ui; background:#0f172a; color:#e5e7eb; padding:18px; }
+    .card { background:#020617; border:1px solid #1e293b; border-radius:12px; padding:16px; max-width:520px; margin:0 auto; }
+    input, select, button { width:100%; padding:12px; border-radius:10px; border:1px solid #1e293b; background:#0b1220; color:#e5e7eb; margin-top:10px; box-sizing:border-box; }
+    button { background:#2563eb; border:none; font-size:16px; }
+    pre { background:#0b1220; border:1px solid #1e293b; border-radius:10px; padding:12px; margin-top:12px; overflow:auto; }
+    .hint { color:#94a3b8; font-size:14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Enroll Device</h2>
+    <p class="hint">This registers a device to your dashboard.</p>
+
+    <input id="code" placeholder="Enrollment code" />
+    <input id="name" placeholder="Device name (example: Test iPhone)" />
+
+    <select id="platform">
+      <option value="ios">iOS</option>
+      <option value="android">Android</option>
+      <option value="other">Other</option>
+    </select>
+
+    <button onclick="claim()">Enroll</button>
+    <pre id="out">(waiting)</pre>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const c = params.get("code");
+    if (c) document.getElementById("code").value = c;
+
+    async function claim() {
+      const code = document.getElementById("code").value.trim();
+      const device_name = document.getElementById("name").value.trim();
+      const platform = document.getElementById("platform").value;
+
+      const out = document.getElementById("out");
+      out.textContent = "Enrolling…";
+
+      const res = await fetch("/enroll/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, device_name, platform })
+      });
+
+      const json = await res.json();
+      out.textContent = JSON.stringify(json, null, 2);
+    }
+  </script>
+</body>
+</html>
